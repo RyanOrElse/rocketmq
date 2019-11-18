@@ -97,7 +97,7 @@ public class DefaultMQProducer extends ClientConfig implements MQProducer {
     /**
      * Compress message body threshold, namely, message body larger than 4k will be compressed on default.
      */
-    private int compressMsgBodyOverHowmuch = 1024 * 4;
+    private int compressMsgBodyOverHowmuch = 1024 * 4; // 4KB
 
     /**
      * Maximum number of retry to perform internally before claiming sending failure in synchronous mode.
@@ -668,6 +668,7 @@ public class DefaultMQProducer extends ClientConfig implements MQProducer {
      * @throws MQClientException if there is any client error.
      */
     @Override
+    //根据时间戳从队列中查找偏移量
     public long searchOffset(MessageQueue mq, long timestamp) throws MQClientException {
         return this.defaultMQProducerImpl.searchOffset(queueWithNamespace(mq), timestamp);
     }

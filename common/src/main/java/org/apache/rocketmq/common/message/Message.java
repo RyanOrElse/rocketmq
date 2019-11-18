@@ -60,6 +60,7 @@ public class Message implements Serializable {
         this(topic, tags, keys, 0, body, true);
     }
 
+    //Message索引键 多个用空格隔开 RocketMQ可以根据这些key快速检索到消息
     public void setKeys(String keys) {
         this.putProperty(MessageConst.PROPERTY_KEYS, keys);
     }
@@ -118,6 +119,7 @@ public class Message implements Serializable {
         return this.getProperty(MessageConst.PROPERTY_TAGS);
     }
 
+    //消息TAG 用于消息过滤
     public void setTags(String tags) {
         this.putProperty(MessageConst.PROPERTY_TAGS, tags);
     }
@@ -145,6 +147,7 @@ public class Message implements Serializable {
         return 0;
     }
 
+    //消息延迟级别 用于定时消息或消息重试
     public void setDelayTimeLevel(int level) {
         this.putProperty(MessageConst.PROPERTY_DELAY_TIME_LEVEL, String.valueOf(level));
     }
@@ -157,6 +160,7 @@ public class Message implements Serializable {
         return Boolean.parseBoolean(result);
     }
 
+    //消息发送时是否等消息存储完成后再返回
     public void setWaitStoreMsgOK(boolean waitStoreMsgOK) {
         this.putProperty(MessageConst.PROPERTY_WAIT_STORE_MSG_OK, Boolean.toString(waitStoreMsgOK));
     }
