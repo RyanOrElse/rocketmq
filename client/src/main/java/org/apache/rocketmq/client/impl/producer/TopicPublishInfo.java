@@ -79,6 +79,7 @@ public class TopicPublishInfo {
                 if (pos < 0)
                     pos = 0;
                 MessageQueue mq = this.messageQueueList.get(pos);
+                //规避上次发送消息的broker
                 if (!mq.getBrokerName().equals(lastBrokerName)) {
                     return mq;
                 }
@@ -87,11 +88,15 @@ public class TopicPublishInfo {
         }
     }
 
+
     public MessageQueue selectOneMessageQueue() {
+        //第一次发送消息，brokerName为空，随机生成一个index
         int index = this.sendWhichQueue.getAndIncrement();
+        //与当前路由表中消息队列个数取模
         int pos = Math.abs(index) % this.messageQueueList.size();
         if (pos < 0)
             pos = 0;
+        //获取第pos个队列
         return this.messageQueueList.get(pos);
     }
 

@@ -162,6 +162,7 @@ public abstract class AbstractSendMessageProcessor implements NettyRequestProces
         return response;
     }
 
+    //当broker接收到消息后，会在msgCheck方法中调用createTopicInSendMessageMethod方法，将topic的信息塞进topicConfigTable缓存中，并且broker会定时发送心跳将topicConfigTable发送给nameserver进行注册
     protected RemotingCommand msgCheck(final ChannelHandlerContext ctx,
         final SendMessageRequestHeader requestHeader, final RemotingCommand response) {
         if (!PermName.isWriteable(this.brokerController.getBrokerConfig().getBrokerPermission())
@@ -192,6 +193,7 @@ public abstract class AbstractSendMessageProcessor implements NettyRequestProces
             }
 
             log.warn("the topic {} not exist, producer: {}", requestHeader.getTopic(), ctx.channel().remoteAddress());
+            //将topic的信息塞进topicConfigTable缓存中
             topicConfig = this.brokerController.getTopicConfigManager().createTopicInSendMessageMethod(
                 requestHeader.getTopic(),
                 requestHeader.getDefaultTopic(),
