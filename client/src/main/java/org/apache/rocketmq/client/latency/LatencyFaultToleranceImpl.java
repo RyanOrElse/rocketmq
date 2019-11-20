@@ -62,6 +62,10 @@ public class LatencyFaultToleranceImpl implements LatencyFaultTolerance<String> 
         this.faultItemTable.remove(name);
     }
 
+    /**
+     * 选择一个相对优秀的对象
+     * @return 对象
+     */
     @Override
     public String pickOneAtLeast() {
         final Enumeration<FaultItem> elements = this.faultItemTable.elements();
@@ -97,11 +101,17 @@ public class LatencyFaultToleranceImpl implements LatencyFaultTolerance<String> 
     }
 
     class FaultItem implements Comparable<FaultItem> {
-        //条目唯一键，这里为brokerName
+        /**
+         * 条目唯一键，这里为brokerName
+         */
         private final String name;
-        //本次消息发送延迟
+        /**
+         * 本次消息发送延迟
+         */
         private volatile long currentLatency;
-        //故障规避开始时间
+        /**
+         * broker恢复可用的开始时间
+         */
         private volatile long startTimestamp;
 
         public FaultItem(final String name) {

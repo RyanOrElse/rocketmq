@@ -165,6 +165,7 @@ public abstract class AbstractSendMessageProcessor implements NettyRequestProces
     //当broker接收到消息后，会在msgCheck方法中调用createTopicInSendMessageMethod方法，将topic的信息塞进topicConfigTable缓存中，并且broker会定时发送心跳将topicConfigTable发送给nameserver进行注册
     protected RemotingCommand msgCheck(final ChannelHandlerContext ctx,
         final SendMessageRequestHeader requestHeader, final RemotingCommand response) {
+        // 检查该Broker是否有写权限 && 是否是顺序消息
         if (!PermName.isWriteable(this.brokerController.getBrokerConfig().getBrokerPermission())
             && this.brokerController.getTopicConfigManager().isOrderTopic(requestHeader.getTopic())) {
             response.setCode(ResponseCode.NO_PERMISSION);
@@ -172,6 +173,7 @@ public abstract class AbstractSendMessageProcessor implements NettyRequestProces
                 + "] sending message is forbidden");
             return response;
         }
+        // 检查该 Topic 是否可以进行消息发送,主要针对默认主题,默认主题不能发送消息，仅仅供路由查找
         if (!this.brokerController.getTopicConfigManager().isTopicCanSendMessage(requestHeader.getTopic())) {
             String errorMsg = "the topic[" + requestHeader.getTopic() + "] is conflict with system reserved words.";
             log.warn(errorMsg);

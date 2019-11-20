@@ -49,18 +49,30 @@ public class MappedFile extends ReferenceResource {
 
     private static final AtomicInteger TOTAL_MAPPED_FILES = new AtomicInteger(0);
     protected final AtomicInteger wrotePosition = new AtomicInteger(0);
+
+    // 当前文件的提交指针，如果开启 transientStore­PoolEnable， 则数据会存储在 TransientStorePool中， 然后提交到内存映射 ByteBuffer 中， 再刷写到磁盘。
     protected final AtomicInteger committedPosition = new AtomicInteger(0);
+
+    // 刷写到磁盘指针，该指针之前的数据持久化到磁盘中
     private final AtomicInteger flushedPosition = new AtomicInteger(0);
+    // 文件大小
     protected int fileSize;
     protected FileChannel fileChannel;
     /**
      * Message will put to here first, and then reput to FileChannel if writeBuffer is not null.
      */
+    //堆内存ByteBuffer， 如果不为空，数据首先将存储在该
+    //Buffer中， 然后提交到MappedFile对应的内存映射文件Buffer
     protected ByteBuffer writeBuffer = null;
+
+    // 堆内存池， transientStorePoolEnable为true时启用
     protected TransientStorePool transientStorePool = null;
     private String fileName;
+
+    // 该文件的初始偏移量
     private long fileFromOffset;
     private File file;
+    // 物理文件对应的内存映射 Buffer
     private MappedByteBuffer mappedByteBuffer;
     private volatile long storeTimestamp = 0;
     private boolean firstCreateInQueue = false;
@@ -141,6 +153,8 @@ public class MappedFile extends ReferenceResource {
         return TOTAL_MAPPED_VIRTUAL_MEMORY.get();
     }
 
+    //根据是否开启 transientStorePoolEnable存在两种初始化情况。 transientStorePoolEnable 为 true 表示内容先存储在堆外内存，
+    // 然后通过 Commit 线程将数据提交到内存映射 Buffer 中，再通过 Flush 线程将内存映射 Buffer 中的数据持久化到磁盘中 。
     public void init(final String fileName, final int fileSize,
         final TransientStorePool transientStorePool) throws IOException {
         init(fileName, fileSize);
@@ -148,6 +162,9 @@ public class MappedFile extends ReferenceResource {
         this.transientStorePool = transientStorePool;
     }
 
+
+    // 初始化 fileFromOffset 为文件名，也就是文件名代表该文件的起始偏移量，
+    // 通过 RandomAccessFile创建读写文件通道，并将文件内容使用 NIO 的内存映射 Buffer将文件映 射到内存中。
     private void init(final String fileName, final int fileSize) throws IOException {
         this.fileName = fileName;
         this.fileSize = fileSize;
@@ -155,6 +172,7 @@ public class MappedFile extends ReferenceResource {
         this.fileFromOffset = Long.parseLong(this.file.getName());
         boolean ok = false;
 
+        // 确保父级文件夹存在
         ensureDirOK(this.file.getParent());
 
         try {
