@@ -164,7 +164,7 @@ public class MappedFile extends ReferenceResource {
 
 
     // 初始化 fileFromOffset 为文件名，也就是文件名代表该文件的起始偏移量，
-    // 通过 RandomAccessFile创建读写文件通道，并将文件内容使用 NIO 的内存映射 Buffer将文件映 射到内存中。
+    // 通过 RandomAccessFile创建读写文件通道，并将文件内容使用 NIO 的内存映射 Buffer将文件映射到内存中。
     private void init(final String fileName, final int fileSize) throws IOException {
         this.fileName = fileName;
         this.fileSize = fileSize;
@@ -286,6 +286,7 @@ public class MappedFile extends ReferenceResource {
     /**
      * @return The current flushed position
      */
+    // 刷盘将内存中的数据刷写到磁盘 ，永久存储在磁盘中
     public int flush(final int flushLeastPages) {
         if (this.isAbleToFlush(flushLeastPages)) {
             if (this.hold()) {

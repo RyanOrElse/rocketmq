@@ -472,6 +472,7 @@ public class MappedFileQueue {
                         this.mappedFileSize,
                         this.mappedFiles.size());
                 } else {
+                    // 因为文件可能会被删除，所有使用firstMappedFile.getFileFromOffset()获取起始偏移量，不一定是0
                     int index = (int) ((offset / this.mappedFileSize) - (firstMappedFile.getFileFromOffset() / this.mappedFileSize));
                     MappedFile targetFile = null;
                     try {
