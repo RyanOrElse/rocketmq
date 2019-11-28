@@ -40,6 +40,12 @@ public abstract class ReferenceResource {
         return this.available;
     }
 
+    /**
+     * 关闭 MappedFile。 初次调用时 this.available 为 true，设置 available 为 false，并 设置初次关闭的时间戳( firstShutdownTimestamp)为当前时间戳，
+     * 然后调用 release()方法 尝试释放资源，release 只有在引用次数小于 1 的情况下才会释放资源 ;如果引用次数大于0，对比当前时间与 firstShutdownTimestamp，
+     * 如果已 经超过了其最大拒绝存活期，每执行 一次，将 引用 数减少 1000，直到引用数小于0时通过执行realse方法释放资源 。
+     * @param intervalForcibly
+     */
     public void shutdown(final long intervalForcibly) {
         if (this.available) {
             this.available = false;
@@ -53,6 +59,9 @@ public abstract class ReferenceResource {
         }
     }
 
+    /**
+     * 将引用次数减l ，如果引用数小于等于0，则执行cleanup方法
+     */
     public void release() {
         long value = this.refCount.decrementAndGet();
         if (value > 0)

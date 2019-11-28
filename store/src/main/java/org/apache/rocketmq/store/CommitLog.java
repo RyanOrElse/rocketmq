@@ -646,6 +646,13 @@ public class CommitLog {
         return putMessageResult;
     }
 
+    /**
+     * 构建 GroupCommitRequest 同步任务并提交到 GroupCommitRequest。
+     * 等待同步刷盘任务完成，如果超时则返回刷盘错误， 刷盘成功后正常返回给调用方 。
+     * @param result
+     * @param putMessageResult
+     * @param messageExt
+     */
     public void handleDiskFlush(AppendMessageResult result, PutMessageResult putMessageResult, MessageExt messageExt) {
         // Synchronization flush
         if (FlushDiskType.SYNC_FLUSH == this.defaultMessageStore.getMessageStoreConfig().getFlushDiskType()) {

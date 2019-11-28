@@ -28,10 +28,18 @@ import org.apache.rocketmq.store.config.MessageStoreConfig;
 import org.apache.rocketmq.store.util.LibC;
 import sun.nio.ch.DirectBuffer;
 
+/**
+ * 短暂的存储池。 RocketMQ单独创建一个MappedByteBuffer内存缓存池，用来临时存储数据，数据先写人该内存映射中，
+ * 然后由commit线程定时将数据从该内存复制到与目的物理文件对应的内存映射中，RokcetMQ引入该机制主要的原因是
+ * 提供一种内存锁定，将当前堆外内存一直锁定在内存中，避免被进程将内存交换到磁盘
+ */
 public class TransientStorePool {
     private static final InternalLogger log = InternalLoggerFactory.getLogger(LoggerName.STORE_LOGGER_NAME);
 
     private final int poolSize;
+    /**
+     * 每个ByteBuffer大小，默认为mapedFileSizeCommitLog，表明TransientStorePool为commitlog文件服务
+     */
     private final int fileSize;
     private final Deque<ByteBuffer> availableBuffers;
     private final MessageStoreConfig storeConfig;
@@ -44,6 +52,7 @@ public class TransientStorePool {
     }
 
     /**
+     * 创建poolSize个堆外内存，并利用com.sun.jna.Library类库将该批内存锁定，避免被置换到交换区，提高存储性能
      * It's a heavy init method.
      */
     public void init() {

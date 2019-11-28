@@ -1533,10 +1533,16 @@ public class DefaultMessageStore implements MessageStore {
             }
         }
 
+        /**
+         * 清除过期文件
+         */
         private void deleteExpiredFiles() {
             int deleteCount = 0;
+            // 文件保留时间
             long fileReservedTime = DefaultMessageStore.this.getMessageStoreConfig().getFileReservedTime();
+            // 删除物理文件的间隔，因为在一次清除过程中， 可能需要被删除的文件不止一个，该值指定两次删除文件的问隔时间。
             int deletePhysicFilesInterval = DefaultMessageStore.this.getMessageStoreConfig().getDeleteCommitLogFilesInterval();
+            // 超过该时间间隔后，文件将被强制删除 。
             int destroyMapedFileIntervalForcibly = DefaultMessageStore.this.getMessageStoreConfig().getDestroyMapedFileIntervalForcibly();
 
             boolean timeup = this.isTimeToDelete();

@@ -18,6 +18,7 @@ package org.apache.rocketmq.store;
 
 import com.sun.jna.NativeLong;
 import com.sun.jna.Pointer;
+
 import java.io.File;
 import java.io.FileNotFoundException;
 import java.io.IOException;
@@ -31,6 +32,7 @@ import java.security.AccessController;
 import java.security.PrivilegedAction;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicLong;
+
 import org.apache.rocketmq.common.UtilAll;
 import org.apache.rocketmq.common.constant.LoggerName;
 import org.apache.rocketmq.logging.InternalLogger;
@@ -42,37 +44,69 @@ import org.apache.rocketmq.store.util.LibC;
 import sun.nio.ch.DirectBuffer;
 
 public class MappedFile extends ReferenceResource {
+    /**
+     * 操作系统每页大小，默认4k
+     */
     public static final int OS_PAGE_SIZE = 1024 * 4;
     protected static final InternalLogger log = InternalLoggerFactory.getLogger(LoggerName.STORE_LOGGER_NAME);
 
+    /**
+     * 当前JVM实例中MappedFile虚拟内存
+     */
     private static final AtomicLong TOTAL_MAPPED_VIRTUAL_MEMORY = new AtomicLong(0);
 
+    /**
+     * 当前JVM实例中MappedFile对象个数
+     */
     private static final AtomicInteger TOTAL_MAPPED_FILES = new AtomicInteger(0);
+
+    /**
+     * 当前该文件的写指针，从0开始(内存映射文件中的写指针)
+     *
+     */
     protected final AtomicInteger wrotePosition = new AtomicInteger(0);
 
-    // 当前文件的提交指针，如果开启 transientStore­PoolEnable， 则数据会存储在 TransientStorePool中， 然后提交到内存映射 ByteBuffer 中， 再刷写到磁盘。
+    /**
+     * 当前文件的提交指针，如果开启transientStore­PoolEnable，则数据会存储在TransientStorePool中，
+     * 然后提交到内存映射ByteBuffer中，再刷写到磁盘
+     */
     protected final AtomicInteger committedPosition = new AtomicInteger(0);
 
-    // 刷写到磁盘指针，该指针之前的数据持久化到磁盘中
+    /**
+     * 刷写到磁盘指针，该指针之前的数据持久化到磁盘中
+     */
     private final AtomicInteger flushedPosition = new AtomicInteger(0);
-    // 文件大小
+    /**
+     * 文件大小
+     */
     protected int fileSize;
     protected FileChannel fileChannel;
     /**
      * Message will put to here first, and then reput to FileChannel if writeBuffer is not null.
      */
-    //堆内存ByteBuffer， 如果不为空，数据首先将存储在该
-    //Buffer中， 然后提交到MappedFile对应的内存映射文件Buffer
+    /**
+     * 堆外内存ByteBuffer，如果不为空，数据首先将存储在该
+     * Buffer中，然后提交到MappedFile对应的内存映射文件Buffer
+     */
     protected ByteBuffer writeBuffer = null;
 
-    // 堆内存池， transientStorePoolEnable为true时启用
+    /**
+     * 堆外内存池，transientStorePoolEnable为true时启用
+     */
     protected TransientStorePool transientStorePool = null;
+    /**
+     * 文件名
+     */
     private String fileName;
 
-    // 该文件的初始偏移量
+    /**
+     * 该文件的初始偏移量
+     */
     private long fileFromOffset;
     private File file;
-    // 物理文件对应的内存映射 Buffer
+    /**
+     * 物理文件对应的内存映射 Buffer
+     */
     private MappedByteBuffer mappedByteBuffer;
     private volatile long storeTimestamp = 0;
     private boolean firstCreateInQueue = false;
@@ -85,7 +119,7 @@ public class MappedFile extends ReferenceResource {
     }
 
     public MappedFile(final String fileName, final int fileSize,
-        final TransientStorePool transientStorePool) throws IOException {
+                      final TransientStorePool transientStorePool) throws IOException {
         init(fileName, fileSize, transientStorePool);
     }
 
@@ -120,7 +154,7 @@ public class MappedFile extends ReferenceResource {
     }
 
     private static Method method(Object target, String methodName, Class<?>[] args)
-        throws NoSuchMethodException {
+            throws NoSuchMethodException {
         try {
             return target.getClass().getMethod(methodName, args);
         } catch (NoSuchMethodException e) {
@@ -153,18 +187,26 @@ public class MappedFile extends ReferenceResource {
         return TOTAL_MAPPED_VIRTUAL_MEMORY.get();
     }
 
-    //根据是否开启 transientStorePoolEnable存在两种初始化情况。 transientStorePoolEnable 为 true 表示内容先存储在堆外内存，
-    // 然后通过 Commit 线程将数据提交到内存映射 Buffer 中，再通过 Flush 线程将内存映射 Buffer 中的数据持久化到磁盘中 。
+    /**
+     * 根据是否开启 transientStorePoolEnable存在两种初始化情况。transientStorePoolEnable为true表示内容先存储在堆外内存，
+     * 然后通过Commit线程将数据提交到内存映射Buffer中，再通过Flush线程将内存映射Buffer中的数据持久化到磁盘中 。
+     */
     public void init(final String fileName, final int fileSize,
-        final TransientStorePool transientStorePool) throws IOException {
+                     final TransientStorePool transientStorePool) throws IOException {
         init(fileName, fileSize);
         this.writeBuffer = transientStorePool.borrowBuffer();
         this.transientStorePool = transientStorePool;
     }
 
 
-    // 初始化 fileFromOffset 为文件名，也就是文件名代表该文件的起始偏移量，
-    // 通过 RandomAccessFile创建读写文件通道，并将文件内容使用 NIO 的内存映射 Buffer将文件映射到内存中。
+    /**
+     * 初始化 fileFromOffset 为文件名，也就是文件名代表该文件的起始偏移量，
+     * 通过 RandomAccessFile创建读写文件通道，并将文件内容使用 NIO 的内存映射 Buffer将文件映射到内存中。
+     *
+     * @param fileName 文件名
+     * @param fileSize 文件大小
+     * @throws IOException
+     */
     private void init(final String fileName, final int fileSize) throws IOException {
         this.fileName = fileName;
         this.fileSize = fileSize;
@@ -407,11 +449,11 @@ public class MappedFile extends ReferenceResource {
                 return new SelectMappedBufferResult(this.fileFromOffset + pos, byteBufferNew, size, this);
             } else {
                 log.warn("matched, but hold failed, request pos: " + pos + ", fileFromOffset: "
-                    + this.fileFromOffset);
+                        + this.fileFromOffset);
             }
         } else {
             log.warn("selectMappedBuffer request pos invalid, request pos: " + pos + ", size: " + size
-                + ", fileFromOffset: " + this.fileFromOffset);
+                    + ", fileFromOffset: " + this.fileFromOffset);
         }
 
         return null;
@@ -433,17 +475,24 @@ public class MappedFile extends ReferenceResource {
         return null;
     }
 
+    /**
+     * 如果 available 为 true，表示 MappedFile 当前可用，无须清理，返回 false,如果资源已经被清除，返回true,如果是堆外内存，
+     * 调用堆外内存的cleanup方法清除，维护MappedFile类变量 TOTAL_MAPPED_VIRTUAL_MEMORY、 TOTAL_MAPPED_FILES并返回 true，
+     * 表示 cleanupOver为 true。
+     * @param currentRef
+     * @return
+     */
     @Override
     public boolean cleanup(final long currentRef) {
         if (this.isAvailable()) {
             log.error("this file[REF:" + currentRef + "] " + this.fileName
-                + " have not shutdown, stop unmapping.");
+                    + " have not shutdown, stop unmapping.");
             return false;
         }
 
         if (this.isCleanupOver()) {
             log.error("this file[REF:" + currentRef + "] " + this.fileName
-                + " have cleanup, do not do it again.");
+                    + " have cleanup, do not do it again.");
             return true;
         }
 
@@ -465,9 +514,9 @@ public class MappedFile extends ReferenceResource {
                 long beginTime = System.currentTimeMillis();
                 boolean result = this.file.delete();
                 log.info("delete file[REF:" + this.getRefCount() + "] " + this.fileName
-                    + (result ? " OK, " : " Failed, ") + "W:" + this.getWrotePosition() + " M:"
-                    + this.getFlushedPosition() + ", "
-                    + UtilAll.computeElapsedTimeMilliseconds(beginTime));
+                        + (result ? " OK, " : " Failed, ") + "W:" + this.getWrotePosition() + " M:"
+                        + this.getFlushedPosition() + ", "
+                        + UtilAll.computeElapsedTimeMilliseconds(beginTime));
             } catch (Exception e) {
                 log.warn("close file channel " + this.fileName + " Failed. ", e);
             }
@@ -475,7 +524,7 @@ public class MappedFile extends ReferenceResource {
             return true;
         } else {
             log.warn("destroy mapped file[REF:" + this.getRefCount() + "] " + this.fileName
-                + " Failed. cleanupOver: " + this.cleanupOver);
+                    + " Failed. cleanupOver: " + this.cleanupOver);
         }
 
         return false;
@@ -490,6 +539,8 @@ public class MappedFile extends ReferenceResource {
     }
 
     /**
+     * 获取当前文件最大的可读指针,如果writeBuffer为空，则直接返回当前的写指针,如果writeBuffer不为空，则返回上一次提交的指针。
+     * 在MappedFile设计中，只有提交了的数据(写入到MappedByteBuffer或FileChannel中的数据)才是安全的数据。
      * @return The max position which have valid data
      */
     public int getReadPosition() {
@@ -530,11 +581,11 @@ public class MappedFile extends ReferenceResource {
         // force flush when prepare load finished
         if (type == FlushDiskType.SYNC_FLUSH) {
             log.info("mapped file warm-up done, force to disk, mappedFile={}, costTime={}",
-                this.getFileName(), System.currentTimeMillis() - beginTime);
+                    this.getFileName(), System.currentTimeMillis() - beginTime);
             mappedByteBuffer.force();
         }
         log.info("mapped file warm-up done. mappedFile={}, costTime={}", this.getFileName(),
-            System.currentTimeMillis() - beginTime);
+                System.currentTimeMillis() - beginTime);
 
         this.mlock();
     }
